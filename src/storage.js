@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
-import { DatabaseSync } from "node:sqlite";
+import Database from "better-sqlite3";
 
 const dataDir = path.resolve("data");
 const databaseFile = path.join(dataDir, "planner.sqlite");
@@ -21,9 +21,9 @@ function getDb() {
   }
 
   ensureDataDir();
-  db = new DatabaseSync(databaseFile);
-  db.exec("PRAGMA journal_mode = WAL");
-  db.exec("PRAGMA foreign_keys = ON");
+  db = new Database(databaseFile);
+  db.pragma("journal_mode = WAL");
+  db.pragma("foreign_keys = ON");
   migrate();
   migrateLegacyJson();
   return db;

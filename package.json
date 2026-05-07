@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@line/bot-sdk": "^11.0.0",
+    "better-sqlite3": "^12.4.1",
     "dotenv": "^16.6.1",
     "express": "^5.2.1",
     "node-cron": "^4.2.1",
