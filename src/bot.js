@@ -8,15 +8,28 @@ const lineClient = LineBotClient.fromChannelAccessToken({
   channelAccessToken: config.lineChannelAccessToken
 });
 
+function isValidLineToId(id) {
+  // LINE userId/groupId/roomId typically looks like U/C/R + 32 hex chars.
+  return /^[UCR][0-9a-fA-F]{32}$/.test(id);
+}
+
+const validTargetIds = config.lineTargetIds.filter(isValidLineToId);
+const invalidTargetIds = config.lineTargetIds.filter((id) => !isValidLineToId(id));
+if (invalidTargetIds.length > 0) {
+  console.warn(
+    `Ignoring invalid LINE_TARGET_IDS: ${invalidTargetIds.map((id) => JSON.stringify(id)).join(", ")}`
+  );
+}
+
 function scheduleSummaryPush(horizon, expression) {
   cron.schedule(
     expression,
     async () => {
-      if (config.lineTargetIds.length === 0) {
+      if (validTargetIds.length === 0) {
         return;
       }
 
-      for (const targetId of config.lineTargetIds) {
+      for (const targetId of validTargetIds) {
         try {
           await pushSummary(lineClient, targetId, horizon);
         } catch (error) {
@@ -32,11 +45,11 @@ function scheduleDigestPush(horizon, expression) {
   cron.schedule(
     expression,
     async () => {
-      if (config.lineTargetIds.length === 0) {
+      if (validTargetIds.length === 0) {
         return;
       }
 
-      for (const targetId of config.lineTargetIds) {
+      for (const targetId of validTargetIds) {
         try {
           await pushDigest(lineClient, targetId, horizon);
         } catch (error) {
@@ -60,7 +73,7 @@ app.listen(config.port, () => {
 
 if (config.lineTargetIds.length > 0) {
   Promise.all(
-    config.lineTargetIds.flatMap((targetId) =>
+    validTargetIds.flatMap((targetId) =>
       ["week", "month", "year"].map((horizon) => pushSummary(lineClient, targetId, horizon))
     )
   )
