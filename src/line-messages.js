@@ -2,12 +2,16 @@ export function helpText() {
   return [
     "Planner commands",
     "- task add <horizon> <importance> <urgency> <title>",
+    "  example: task add week 4 5 Finish sales report",
     "- task list <week|month|year>",
+    "  example: task list week",
     "- task done <id>",
     "- task assign <id> <lineUserId>",
     "- plan add <horizon> <title>",
+    "  example: plan add month Launch planner beta",
     "- plan list <horizon>",
     "- memory add <content>",
+    "  example: memory add Focus on launch tasks first",
     "- memory list",
     "- memory forget <id>",
     "- summary <week|month|year>",
@@ -32,4 +36,3 @@ export function menuTemplate() {
     }
   };
 }
-

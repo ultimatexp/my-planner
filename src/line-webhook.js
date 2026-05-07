@@ -28,7 +28,7 @@ function verifyLineSignature(channelSecret, signature, rawBody) {
 }
 
 function parseTextCommand(text) {
-  const trimmed = (text || "").trim();
+  const trimmed = (text || "").trim().replace(/^\/+/, "");
   const parts = trimmed.split(/\s+/);
   const [scope, cmd, ...rest] = parts;
 
@@ -38,6 +38,59 @@ function parseTextCommand(text) {
     cmd: (cmd || "").toLowerCase(),
     rest
   };
+}
+
+function normalizeToken(value) {
+  return (value || "").toLowerCase().replace(/[^a-z]/g, "");
+}
+
+function resolveCommandShape(parsed) {
+  const scope = normalizeToken(parsed.scope);
+  const cmd = normalizeToken(parsed.cmd);
+
+  if (scope === "summary") {
+    return { type: "summary", horizon: normalizeToken(parsed.cmd) || normalizeToken(parsed.rest[0]) || "week" };
+  }
+
+  if (scope === "help" || scope === "menu") {
+    return { type: "help" };
+  }
+
+  if (scope === "list") {
+    return { type: "taskList", horizon: cmd || normalizeToken(parsed.rest[0]) };
+  }
+
+  if (scope === "task" && cmd === "add") {
+    return { type: "taskAdd" };
+  }
+  if (scope === "task" && cmd === "list") {
+    return { type: "taskList", horizon: normalizeToken(parsed.rest[0]) };
+  }
+  if (scope === "task" && (cmd === "done" || cmd === "complete")) {
+    return { type: "taskDone" };
+  }
+  if (scope === "task" && cmd === "assign") {
+    return { type: "taskAssign" };
+  }
+
+  if (scope === "plan" && cmd === "add") {
+    return { type: "planAdd" };
+  }
+  if (scope === "plan" && cmd === "list") {
+    return { type: "planList", horizon: normalizeToken(parsed.rest[0]) };
+  }
+
+  if (scope === "memory" && cmd === "add") {
+    return { type: "memoryAdd" };
+  }
+  if (scope === "memory" && cmd === "list") {
+    return { type: "memoryList" };
+  }
+  if (scope === "memory" && (cmd === "forget" || cmd === "delete" || cmd === "remove")) {
+    return { type: "memoryForget" };
+  }
+
+  return { type: "unknown" };
 }
 
 async function handlePostback(event, replyMessages) {
@@ -73,20 +126,21 @@ async function handlePostback(event, replyMessages) {
 async function handleTextMessage(event, replyMessages) {
   const parsed = parseTextCommand(event.message?.text || "");
   const userId = event.source?.userId || "anonymous";
+  const command = resolveCommandShape(parsed);
 
-  if (parsed.raw === "help" || parsed.raw === "menu") {
+  if (command.type === "help") {
     replyMessages.push({ type: "text", text: helpText() });
     replyMessages.push(menuTemplate());
     return;
   }
 
-  if (parsed.raw.startsWith("summary ")) {
-    const summary = await buildSummary(parsed.raw.split(/\s+/)[1] || "week");
+  if (command.type === "summary") {
+    const summary = await buildSummary(command.horizon || "week");
     replyMessages.push({ type: "text", text: summaryToText(summary).slice(0, 4500) });
     return;
   }
 
-  if (parsed.scope === "task" && parsed.cmd === "add") {
+  if (command.type === "taskAdd") {
     const [horizon, importance, urgency, ...titleParts] = parsed.rest;
     const result = addTaskAction(
       {
@@ -101,50 +155,50 @@ async function handleTextMessage(event, replyMessages) {
     return;
   }
 
-  if (parsed.scope === "task" && parsed.cmd === "list") {
-    const result = listTasksAction(parsed.rest[0]);
+  if (command.type === "taskList") {
+    const result = listTasksAction(command.horizon);
     replyMessages.push({ type: "text", text: result.message.slice(0, 4500) });
     return;
   }
 
-  if (parsed.scope === "task" && parsed.cmd === "done") {
+  if (command.type === "taskDone") {
     const result = markDoneAction(parsed.rest[0], userId);
     replyMessages.push({ type: "text", text: result.message.slice(0, 4500) });
     return;
   }
 
-  if (parsed.scope === "task" && parsed.cmd === "assign") {
+  if (command.type === "taskAssign") {
     const result = assignTaskAction(parsed.rest[0], parsed.rest[1], userId);
     replyMessages.push({ type: "text", text: result.message.slice(0, 4500) });
     return;
   }
 
-  if (parsed.scope === "plan" && parsed.cmd === "add") {
+  if (command.type === "planAdd") {
     const [horizon, ...titleParts] = parsed.rest;
     const result = addPlanAction(horizon, titleParts.join(" "), userId);
     replyMessages.push({ type: "text", text: result.message.slice(0, 4500) });
     return;
   }
 
-  if (parsed.scope === "plan" && parsed.cmd === "list") {
-    const result = listPlansAction(parsed.rest[0]);
+  if (command.type === "planList") {
+    const result = listPlansAction(command.horizon);
     replyMessages.push({ type: "text", text: result.message.slice(0, 4500) });
     return;
   }
 
-  if (parsed.scope === "memory" && parsed.cmd === "add") {
+  if (command.type === "memoryAdd") {
     const result = addMemoryAction({ content: parsed.rest.join(" ") }, userId);
     replyMessages.push({ type: "text", text: result.message.slice(0, 4500) });
     return;
   }
 
-  if (parsed.scope === "memory" && parsed.cmd === "list") {
+  if (command.type === "memoryList") {
     const result = listMemoriesAction();
     replyMessages.push({ type: "text", text: result.message.slice(0, 4500) });
     return;
   }
 
-  if (parsed.scope === "memory" && parsed.cmd === "forget") {
+  if (command.type === "memoryForget") {
     const result = forgetMemoryAction(parsed.rest[0]);
     replyMessages.push({ type: "text", text: result.message.slice(0, 4500) });
     return;
