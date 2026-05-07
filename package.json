@@ -1,0 +1,20 @@
+{
+  "name": "line-planner-bot",
+  "version": "0.1.0",
+  "description": "LINE OA task planning bot with weekly, monthly, and yearly summaries.",
+  "type": "module",
+  "main": "src/bot.js",
+  "scripts": {
+    "start": "node --no-warnings=ExperimentalWarning src/bot.js"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "@line/bot-sdk": "^11.0.0",
+    "dotenv": "^16.6.1",
+    "express": "^5.2.1",
+    "node-cron": "^4.2.1",
+    "openai": "^5.13.1"
+  }
+}
