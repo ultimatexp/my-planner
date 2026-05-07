@@ -15,6 +15,7 @@ export const config = {
   lineChannelAccessToken: requireEnv("LINE_CHANNEL_ACCESS_TOKEN"),
   lineTargetIds: (process.env.LINE_TARGET_IDS || "").split(",").map((item) => item.trim()).filter(Boolean),
   timezone: process.env.LINE_TIMEZONE || "UTC",
+  host: process.env.HOST || "0.0.0.0",
   port: Number(process.env.PORT || 3000),
   dailyDigestCron: process.env.DAILY_DIGEST_CRON || "0 9 * * *",
   weeklyDigestCron: process.env.WEEKLY_DIGEST_CRON || "0 9 * * 1",

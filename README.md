@@ -77,6 +77,7 @@ ngrok http 3000
 - Set env vars from `.env.example`
 - Keep webhook URL HTTPS and update it in LINE Developers Console
 - Use `PORT` from platform env (already supported)
+- The server binds to `0.0.0.0` by default for Railway edge routing
 
 ## Notes
 

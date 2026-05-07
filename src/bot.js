@@ -67,8 +67,8 @@ scheduleSummaryPush("month", config.monthlyDigestCron);
 scheduleSummaryPush("year", config.yearlyDigestCron);
 
 const app = createLineWebhookApp(config, lineClient);
-app.listen(config.port, () => {
-  console.log(`LINE planner webhook is running on port ${config.port}`);
+app.listen(config.port, config.host, () => {
+  console.log(`LINE planner webhook is running on ${config.host}:${config.port}`);
 });
 
 if (config.lineTargetIds.length > 0) {
