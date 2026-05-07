@@ -153,9 +153,37 @@ async function handleTextMessage(event, replyMessages) {
   replyMessages.push({ type: "text", text: `Unknown command.\n\n${helpText()}` });
 }
 
+async function processEvent(event, lineClient) {
+  if (!event.replyToken) {
+    return;
+  }
+
+  const replyMessages = [];
+  if (event.type === "message" && event.message?.type === "text") {
+    await handleTextMessage(event, replyMessages);
+  } else if (event.type === "postback") {
+    await handlePostback(event, replyMessages);
+  } else {
+    replyMessages.push({ type: "text", text: "Event received." });
+  }
+
+  if (replyMessages.length === 0) {
+    return;
+  }
+
+  await lineClient.replyMessage({
+    replyToken: event.replyToken,
+    messages: replyMessages.slice(0, 5)
+  });
+}
+
 export function createLineWebhookApp(config, lineClient) {
   const app = express();
   app.use("/webhook/line", express.raw({ type: "*/*" }));
+
+  app.get("/", (_req, res) => {
+    res.status(200).send("ok");
+  });
 
   app.get("/health", (_req, res) => {
     res.status(200).send("ok");
@@ -176,33 +204,17 @@ export function createLineWebhookApp(config, lineClient) {
       res.status(400).json({ error: "Invalid JSON body" });
       return;
     }
-    const events = body.events || [];
-
-    for (const event of events) {
-      if (!event.replyToken) {
-        continue;
-      }
-
-      const replyMessages = [];
-      if (event.type === "message" && event.message?.type === "text") {
-        await handleTextMessage(event, replyMessages);
-      } else if (event.type === "postback") {
-        await handlePostback(event, replyMessages);
-      } else {
-        replyMessages.push({ type: "text", text: "Event received." });
-      }
-
-      if (replyMessages.length > 0) {
-        await lineClient.replyMessage({
-          replyToken: event.replyToken,
-          messages: replyMessages.slice(0, 5)
-        });
-      }
-    }
-
     res.status(200).json({ ok: true });
+
+    const events = Array.isArray(body.events) ? body.events : [];
+    Promise.allSettled(events.map((event) => processEvent(event, lineClient))).then((results) => {
+      for (const result of results) {
+        if (result.status === "rejected") {
+          console.error("LINE webhook event processing failed.", result.reason);
+        }
+      }
+    });
   });
 
   return app;
 }
-
